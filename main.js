@@ -166,9 +166,8 @@ async function getRoute(end) {
   )} min 🚴 </strong></p><ol>${tripInstructions}</ol>`;
 
 
-  // if (dirInterval) clearInterval(dirInterval);
-  // dirInterval = setInterval( () => { checkRoute(); }, 1000);
-  checkRoute();
+  if (dirInterval) clearInterval(dirInterval);
+  dirInterval = setInterval( () => { checkRoute(); }, 1000);
 }
 
 function checkRoute() {
