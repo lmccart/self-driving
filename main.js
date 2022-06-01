@@ -2,6 +2,8 @@ let init = false;
 let userLoc;
 let lastDir, dirInterval;
 
+$('#start').click(initApp);
+
 mapboxgl.accessToken = 'pk.eyJ1IjoibGF1cmVubGVlbWFjayIsImEiOiJja3BjMWJmMDcwNzh3MnBtbHIxeHIwMWgwIn0.7y2mRzNJ7IS467f_-ZHSFg';
 const map = new mapboxgl.Map({
   container: 'map',
@@ -9,8 +11,6 @@ const map = new mapboxgl.Map({
   center: [-122.662323, 45.523751], // starting position
   zoom: 3 // starting zoom
 });
-
-
 
 map.on('load', () => {
   const geolocate = new mapboxgl.GeolocateControl({
@@ -28,6 +28,12 @@ map.on('load', () => {
     }
   });
 });
+
+function initApp() {
+  
+  let utter = new SpeechSynthesisUtterance('Hello world');
+  window.speechSynthesis.speak(utter);
+}
 
 
 function initMap() {

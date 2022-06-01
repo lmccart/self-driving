@@ -6,6 +6,7 @@
     <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no">
     <link href="https://api.mapbox.com/mapbox-gl-js/v2.8.2/mapbox-gl.css" rel="stylesheet">
     <script src="https://api.mapbox.com/mapbox-gl-js/v2.8.2/mapbox-gl.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js" integrity="sha256-/xUj+3OJU5yExlq6GSYGSHk7tPXikynS7ogEvDej/m4=" crossorigin="anonymous"></script>
     
     <style>
       body { margin: 0; padding: 0; }
@@ -21,10 +22,18 @@
         overflow-y: scroll;
         font-family: sans-serif;
       }
+      #start {
+        position: absolute;
+        top: 1em;
+        right: 5em;
+        padding: 1em;
+        background: white;
+      }
     </style>
   </head>
   <body>
     <div id='map'></div>
+    <div id='start'>START</div>
     <div id='instructions'></div>
     <script src='main.js?v=0.1'></script>
   </body>
