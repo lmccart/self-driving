@@ -29,6 +29,7 @@ map.on('load', () => {
   geolocate.on('geolocate', (e) => {
     console.log('A geolocate event has occurred.');
     userLoc = [e.coords.longitude, e.coords.latitude];
+    $('#start').html(`${e.coords.longitude}, ${e.coords.latitude}`);
     if (!init) {
       initMap();
     }
