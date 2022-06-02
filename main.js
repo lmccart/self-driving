@@ -173,10 +173,7 @@ async function getRoute(end) {
 
 function checkRoute() {
   let step = getCurrentStep();
-  console.log(step);
-
   let dir = getCurrentDirection(step);
-
   if (dir.announcement !== lastDir) {
     lastDir = dir.announcement;
     let utter = new SpeechSynthesisUtterance(lastDir);
@@ -189,15 +186,13 @@ function getCurrentDirection(step) {
   let directions = route.legs[0].steps[step.curStep].voiceInstructions;
   let minDist = 999999999999999999999;
   let curDir = -1;
-
   for (let i = 0; i < directions.length; i++) {
     let dist = Math.abs(step.stepEndDist - directions[i].distanceAlongGeometry);
     if (dist < minDist) {
       minDist = dist;
       curDir = i;
-    } else {
-      return directions[curDir];
     }
+    return directions[curDir];
   }
 }
 
@@ -210,10 +205,10 @@ function getCurrentStep() {
     // console.log('step ', j);
     for (let i = step.geometry.coordinates.length - 1; i >= 0; i--) {
       let geo = step.geometry.coordinates[i];
-      console.log('geo ', i);
+      // console.log('geo ', i);
       let dist = getDistanceFromLatLonInM(userLoc[0], userLoc[1], geo[0], geo[1]);
 
-      console.log(j, i, geo[0], geo[1], dist);
+      // console.log(j, i, geo[0], geo[1], dist);
       if (dist < minDist) {
         // console.log(dist, minDist, stepEndDist, curStep); 
         if (i === step.geometry.coordinates.length - 1) stepEndDist = dist;
