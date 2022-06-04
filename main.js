@@ -1,8 +1,9 @@
-let init = false;
+let mapInitialized = false, routeInitialized = false;
 let userLoc;
-let lastDir, dirInterval, route;
+let lastDir, route;
+let debug = false;
 
-$('#start').click(initApp);
+$('#start').click(initSpeech);
 
 mapboxgl.accessToken = 'pk.eyJ1IjoibGF1cmVubGVlbWFjayIsImEiOiJja3BjMWJmMDcwNzh3MnBtbHIxeHIwMWgwIn0.7y2mRzNJ7IS467f_-ZHSFg';
 const map = new mapboxgl.Map({
@@ -11,76 +12,53 @@ const map = new mapboxgl.Map({
   center: [-118.441429, 34.076236],
   zoom: 15
 });
-
-//temp
-// map.on('load', () => {
-//   userLoc = [-118.441429, 34.076236];
-//   initMap();
-// });
+const geolocate = new mapboxgl.GeolocateControl({ positionOptions: { enableHighAccuracy: true }, trackUserLocation: true });
+map.addControl(geolocate);
 
 map.on('load', () => {
-  const geolocate = new mapboxgl.GeolocateControl({
-    positionOptions: {
-      enableHighAccuracy: true
-    },
-    trackUserLocation: true
-  });
-  map.addControl(geolocate);
   geolocate.on('geolocate', (e) => {
     console.log('A geolocate event has occurred.');
-    userLoc = [e.coords.longitude, e.coords.latitude];
-    $('#start').html(`${e.coords.longitude}, ${e.coords.latitude}`);
-    if (!init) {
-      initMap();
-    }
+    updateLoc(e.coords.longitude, e.coords.latitude);
+    if (!mapInitialized) initMap();
+    if (routeInitialized) checkRoute();
   });
+  geolocate.trigger();
 });
 
-function initApp() {
-  
-  let utter = new SpeechSynthesisUtterance('Hello world');
-  window.speechSynthesis.speak(utter);
-}
-
-
 function initMap() {
-  init = true;
-  map.on('click', displayRoute);
+  mapInitialized = true;
   map.addLayer({
     id: 'point',
     type: 'circle',
     source: {
       type: 'geojson',
-      data: {
-        type: 'FeatureCollection',
-        features: [
-          {
-            type: 'Feature',
-            properties: {},
-            geometry: { type: 'Point', coordinates: userLoc }
-          }
-        ]
-      }
+      data: {  type: 'FeatureCollection', features: [{ type: 'Feature', properties: {}, geometry: { type: 'Point', coordinates: userLoc } }] }
     },
     paint: {  'circle-radius': 10, 'circle-color': '#3887be' }
   });
+  map.on('click', (e) => {
+    if (routeInitialized && debug) {
+      console.log(e);
+      updateLoc(e.lngLat.lng, e.lngLat.lat);
+      checkRoute();
+    } else {
+      displayRoute(e);
+    }
+  });
+}
+
+function updateLoc(lon, lat) {
+  userLoc = [lon, lat];
+  $('#debug').html(`${lon}, ${lat}`);
+  if (mapInitialized) {
+    map.getSource('point').setData({ type: 'FeatureCollection', features: [{ type: 'Feature', properties: {}, geometry: { type: 'Point', coordinates: userLoc } }] });
+  }
 }
 
 function displayRoute(event) {
+  routeInitialized = true;
   const coords = Object.keys(event.lngLat).map((key) => event.lngLat[key]);
-    const end = {
-      type: 'FeatureCollection',
-      features: [
-        {
-          type: 'Feature',
-          properties: {},
-          geometry: {
-            type: 'Point',
-            coordinates: coords
-          }
-        }
-      ]
-    };
+    const end = { type: 'FeatureCollection', features: [{ type: 'Feature', properties: {}, geometry: { type: 'Point', coordinates: coords } }] };
     if (map.getLayer('end')) {
       map.getSource('end').setData(end);
     } else {
@@ -89,24 +67,9 @@ function displayRoute(event) {
         type: 'circle',
         source: {
           type: 'geojson',
-          data: {
-            type: 'FeatureCollection',
-            features: [
-              {
-                type: 'Feature',
-                properties: {},
-                geometry: {
-                  type: 'Point',
-                  coordinates: coords
-                }
-              }
-            ]
-          }
+          data: { type: 'FeatureCollection', features: [{ type: 'Feature', properties: {},  geometry: { type: 'Point', coordinates: coords } }]}
         },
-        paint: {
-          'circle-radius': 10,
-          'circle-color': '#f30'
-        }
+        paint: { 'circle-radius': 10, 'circle-color': '#f30'}
       });
     }
     getRoute(coords);
@@ -122,53 +85,19 @@ async function getRoute(end) {
   route = json.routes[0];
 
   const coords = route.geometry.coordinates;
-  const geojson = {
-    type: 'Feature',
-    properties: {},
-    geometry: {
-      type: 'LineString',
-      coordinates: coords
-    }
-  };
-  // if the route already exists on the map, we'll reset it using setData
+  const geojson = { type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: coords } };
   if (map.getSource('route')) {
     map.getSource('route').setData(geojson);
-  }
-  // otherwise, we'll make a new request
-  else {
+  } else {
     map.addLayer({
-      id: 'route',
-      type: 'line',
-      source: {
-        type: 'geojson',
-        data: geojson
-      },
-      layout: {
-        'line-join': 'round',
-        'line-cap': 'round'
-      },
-      paint: {
-        'line-color': '#3887be',
-        'line-width': 5,
-        'line-opacity': 0.75
-      }
+      id: 'route', type: 'line',
+      source: { type: 'geojson', data: geojson },
+      layout: { 'line-join': 'round', 'line-cap': 'round' },
+      paint: { 'line-color': '#3887be', 'line-width': 5, 'line-opacity': 0.75 }
     });
   }
-  // get the sidebar and add the instructions
-  const instructions = document.getElementById('instructions');
-  const steps = route.legs[0].steps;
-
-  let tripInstructions = '';
-  for (const step of steps) {
-    tripInstructions += `<li>${step.maneuver.instruction}</li>`;
-  }
-  instructions.innerHTML = `<p><strong>Trip duration: ${Math.floor(
-    route.duration / 60
-  )} min 🚴 </strong></p><ol>${tripInstructions}</ol>`;
-
-
-  if (dirInterval) clearInterval(dirInterval);
-  dirInterval = setInterval( () => { checkRoute(); }, 1000);
+  // writeInstructions();
+  checkRoute();
 }
 
 function checkRoute() {
@@ -183,45 +112,53 @@ function checkRoute() {
 }
 
 function getCurrentDirection(step) {
-  let directions = route.legs[0].steps[step.curStep].voiceInstructions;
+  let directions = route.legs[0].steps[step.routeStep].voiceInstructions;
   let minDist = 999999999999999999999;
   let curDir = -1;
   for (let i = 0; i < directions.length; i++) {
-    let dist = Math.abs(step.stepEndDist - directions[i].distanceAlongGeometry);
+    let dist = Math.abs(step.routeStepEndDist - directions[i].distanceAlongGeometry);
+    // console.log(i, step.routeStepEndDist, directions[i].distanceAlongGeometry, dist);
     if (dist < minDist) {
       minDist = dist;
       curDir = i;
     }
-    return directions[curDir];
   }
+  // console.log('minDist', minDist, 'curDir', curDir);
+  return directions[curDir];
 }
 
 function getCurrentStep() {
-  let minDist = 999999999999999999999;
-  let stepEndDist = 0;
-  let curStep = -1, curGeo = -1;
+  let minRouteDist = 999999999999999999999;
+  let minStepDist = 999999999999999999999;
+  let routeStep = -1, routeGeo = -1, routeStepEndDist = -1;
   for (let j = 0; j < route.legs[0].steps.length; j++) {
     let step = route.legs[0].steps[j];
-    // console.log('step ', j);
+
+    let stepEndDist = -1, stepGeo = -1;
     for (let i = step.geometry.coordinates.length - 1; i >= 0; i--) {
       let geo = step.geometry.coordinates[i];
-      // console.log('geo ', i);
       let dist = getDistanceFromLatLonInM(userLoc[0], userLoc[1], geo[0], geo[1]);
 
-      // console.log(j, i, geo[0], geo[1], dist);
-      if (dist < minDist) {
-        // console.log(dist, minDist, stepEndDist, curStep); 
-        if (i === step.geometry.coordinates.length - 1) stepEndDist = dist;
-        minDist = dist;
-        curStep = j;
-        curGeo = i;
-      } else {
-        console.log('curStep', curStep, 'curGeo', curGeo, 'endDist', stepEndDist); 
-        return {'curStep': curStep, 'curGeo': curGeo, 'stepEndDist': stepEndDist};
+      if (dist < minStepDist) {
+        minStepDist = dist;
+        stepGeo = i;
+      }        
+      if (i === step.geometry.coordinates.length - 1) {
+        stepEndDist = dist;
       }
     }
+    if (minStepDist < minRouteDist) {
+      minRouteDist = minStepDist;
+      routeStep = j;
+      routeGeo = stepGeo;
+      routeStepEndDist = stepEndDist;
+    }
   }
+
+  console.log('routeStep', routeStep, 'routeGeo', routeGeo, 'routeStepEndDist', routeStepEndDist);
+  return {'routeStep': routeStep, 'routeGeo': routeGeo, 'routeStepEndDist': routeStepEndDist};
 }
+
 
 function getDistanceFromLatLonInM(lon1, lat1, lon2, lat2) {
   var R = 6371; // Radius of the earth in km
@@ -239,4 +176,24 @@ function getDistanceFromLatLonInM(lon1, lat1, lon2, lat2) {
 
 function deg2rad(deg) {
   return deg * (Math.PI/180)
+}
+
+function initSpeech() {
+  $('.overlay').hide();
+  let utter = new SpeechSynthesisUtterance('Hi there. Once your location has been determined, touch anywhere on the map to begin navigating.');
+  window.speechSynthesis.speak(utter);
+}
+
+function writeInstructions() {
+  // get the sidebar and add the instructions
+  const instructions = document.getElementById('instructions');
+  const steps = route.legs[0].steps;
+
+  let tripInstructions = '';
+  for (const step of steps) {
+    tripInstructions += `<li>${step.maneuver.instruction}</li>`;
+  }
+  instructions.innerHTML = `<p><strong>Trip duration: ${Math.floor(
+    route.duration / 60
+  )} min 🚴 </strong></p><ol>${tripInstructions}</ol>`;
 }
