@@ -1,7 +1,8 @@
-let mapInitialized = false, routeInitialized = false;
+let mapInitialized = false,
+  routeInitialized = false;
 let userLoc;
 let lastDir, lastStep, route;
-let debug = true;
+let debug = false;
 let lastPromptTime = -60000;
 
 $('#start').click(initSpeech);
@@ -13,7 +14,12 @@ const map = new mapboxgl.Map({
   center: [-118.441429, 34.076236],
   zoom: 15
 });
-const geolocate = new mapboxgl.GeolocateControl({ positionOptions: { enableHighAccuracy: true }, trackUserLocation: true });
+const geolocate = new mapboxgl.GeolocateControl({
+  positionOptions: {
+    enableHighAccuracy: true
+  },
+  trackUserLocation: true
+});
 map.addControl(geolocate);
 
 map.on('load', () => {
@@ -33,9 +39,22 @@ function initMap() {
     type: 'circle',
     source: {
       type: 'geojson',
-      data: {  type: 'FeatureCollection', features: [{ type: 'Feature', properties: {}, geometry: { type: 'Point', coordinates: userLoc } }] }
+      data: {
+        type: 'FeatureCollection',
+        features: [{
+          type: 'Feature',
+          properties: {},
+          geometry: {
+            type: 'Point',
+            coordinates: userLoc
+          }
+        }]
+      }
     },
-    paint: {  'circle-radius': 10, 'circle-color': '#3887be' }
+    paint: {
+      'circle-radius': 10,
+      'circle-color': '#3887be'
+    }
   });
   map.on('click', (e) => {
     if (routeInitialized && debug) {
@@ -52,49 +71,101 @@ function updateLoc(lon, lat) {
   userLoc = [lon, lat];
   $('#debug').html(`${lon}, ${lat}`);
   if (mapInitialized) {
-    map.getSource('point').setData({ type: 'FeatureCollection', features: [{ type: 'Feature', properties: {}, geometry: { type: 'Point', coordinates: userLoc } }] });
+    map.getSource('point').setData({
+      type: 'FeatureCollection',
+      features: [{
+        type: 'Feature',
+        properties: {},
+        geometry: {
+          type: 'Point',
+          coordinates: userLoc
+        }
+      }]
+    });
   }
 }
 
 function displayRoute(event) {
   routeInitialized = true;
   const coords = Object.keys(event.lngLat).map((key) => event.lngLat[key]);
-    const end = { type: 'FeatureCollection', features: [{ type: 'Feature', properties: {}, geometry: { type: 'Point', coordinates: coords } }] };
-    if (map.getLayer('end')) {
-      map.getSource('end').setData(end);
-    } else {
-      map.addLayer({
-        id: 'end',
-        type: 'circle',
-        source: {
-          type: 'geojson',
-          data: { type: 'FeatureCollection', features: [{ type: 'Feature', properties: {},  geometry: { type: 'Point', coordinates: coords } }]}
-        },
-        paint: { 'circle-radius': 10, 'circle-color': '#f30'}
-      });
-    }
-    getRoute(coords);
+  const end = {
+    type: 'FeatureCollection',
+    features: [{
+      type: 'Feature',
+      properties: {},
+      geometry: {
+        type: 'Point',
+        coordinates: coords
+      }
+    }]
+  };
+  if (map.getLayer('end')) {
+    map.getSource('end').setData(end);
+  } else {
+    map.addLayer({
+      id: 'end',
+      type: 'circle',
+      source: {
+        type: 'geojson',
+        data: {
+          type: 'FeatureCollection',
+          features: [{
+            type: 'Feature',
+            properties: {},
+            geometry: {
+              type: 'Point',
+              coordinates: coords
+            }
+          }]
+        }
+      },
+      paint: {
+        'circle-radius': 10,
+        'circle-color': '#f30'
+      }
+    });
+  }
+  getRoute(coords);
 }
 
 async function getRoute(end) {
   const query = await fetch(
-    `https://api.mapbox.com/directions/v5/mapbox/driving/${userLoc[0]},${userLoc[1]};${end[0]},${end[1]}?steps=true&voice_instructions=true&geometries=geojson&access_token=${mapboxgl.accessToken}`,
-    { method: 'GET' }
+    `https://api.mapbox.com/directions/v5/mapbox/driving/${userLoc[0]},${userLoc[1]};${end[0]},${end[1]}?steps=true&voice_instructions=true&geometries=geojson&access_token=${mapboxgl.accessToken}`, {
+      method: 'GET'
+    }
   );
   const json = await query.json();
   console.log(json)
   route = json.routes[0];
 
   const coords = route.geometry.coordinates;
-  const geojson = { type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: coords } };
+  const geojson = {
+    type: 'Feature',
+    properties: {},
+    geometry: {
+      type: 'LineString',
+      coordinates: coords
+    }
+  };
   if (map.getSource('route')) {
     map.getSource('route').setData(geojson);
   } else {
     map.addLayer({
-      id: 'route', type: 'line',
-      source: { type: 'geojson', data: geojson },
-      layout: { 'line-join': 'round', 'line-cap': 'round' },
-      paint: { 'line-color': '#3887be', 'line-width': 5, 'line-opacity': 0.75 }
+      id: 'route',
+      type: 'line',
+      source: {
+        type: 'geojson',
+        data: geojson
+      },
+      layout: {
+        'line-join': 'round',
+        'line-cap': 'round'
+      },
+      paint: {
+        'line-color': '#3887be',
+        'line-width': 5,
+        'line-opacity': 0.75
+      }
     });
   }
   // writeInstructions();
@@ -134,11 +205,14 @@ function getCurrentDirection(step) {
 function getCurrentStep() {
   let minRouteDist = 999999999999999999999;
   let minStepDist = 999999999999999999999;
-  let routeStep = -1, routeGeo = -1, routeStepEndDist = -1;
+  let routeStep = -1,
+    routeGeo = -1,
+    routeStepEndDist = -1;
   for (let j = 0; j < route.legs[0].steps.length; j++) {
     let step = route.legs[0].steps[j];
 
-    let stepEndDist = -1, stepGeo = -1;
+    let stepEndDist = -1,
+      stepGeo = -1;
     for (let i = step.geometry.coordinates.length - 1; i >= 0; i--) {
       let geo = step.geometry.coordinates[i];
       let dist = getDistanceFromLatLonInM(userLoc[0], userLoc[1], geo[0], geo[1]);
@@ -146,7 +220,7 @@ function getCurrentStep() {
       if (dist < minStepDist) {
         minStepDist = dist;
         stepGeo = i;
-      }        
+      }
       if (i === step.geometry.coordinates.length - 1) {
         stepEndDist = dist;
       }
@@ -160,26 +234,29 @@ function getCurrentStep() {
   }
 
   console.log('routeStep', routeStep, 'routeGeo', routeGeo, 'routeStepEndDist', routeStepEndDist);
-  return {'routeStep': routeStep, 'routeGeo': routeGeo, 'routeStepEndDist': routeStepEndDist};
+  return {
+    'routeStep': routeStep,
+    'routeGeo': routeGeo,
+    'routeStepEndDist': routeStepEndDist
+  };
 }
 
 
 function getDistanceFromLatLonInM(lon1, lat1, lon2, lat2) {
   var R = 6371; // Radius of the earth in km
-  var dLat = deg2rad(lat2-lat1);  // deg2rad below
-  var dLon = deg2rad(lon2-lon1); 
-  var a = 
-    Math.sin(dLat/2) * Math.sin(dLat/2) +
-    Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) * 
-    Math.sin(dLon/2) * Math.sin(dLon/2)
-    ; 
-  var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)); 
+  var dLat = deg2rad(lat2 - lat1); // deg2rad below
+  var dLon = deg2rad(lon2 - lon1);
+  var a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   var d = R * c * 1000; // Distance in m
   return d;
 }
 
 function deg2rad(deg) {
-  return deg * (Math.PI/180)
+  return deg * (Math.PI / 180)
 }
 
 function initSpeech() {
@@ -228,18 +305,23 @@ let prompts = [
 ];
 
 function prompt() {
-  let availPrompts = prompts.filter((elt) => { return !(elt.played)});
-  if (availPrompts.length && performance.now() - lastPromptTime > 60*1000) {
+  let availPrompts = prompts.filter((elt) => {
+    return !(elt.played)
+  });
+  if (availPrompts.length && performance.now() - lastPromptTime > 60 * 1000) {
     let p = pickRandom(availPrompts);
     p.played = true;
     if (availPrompts.length < 13) {
       p.phrase = p.phrase.replace('driving and ', ' ');
     }
-    setTimeout(() => { speak(p.phrase); }, 10*1000);
-    lastPromptTime = performance.now() + 10*1000;
+    setTimeout(() => {
+      speak(p.phrase);
+    }, 10 * 1000);
+    lastPromptTime = performance.now() + 10 * 1000;
   }
 }
 
 function pickRandom(arr) {
   return arr[Math.floor(Math.random() * arr.length)];
 }
+
