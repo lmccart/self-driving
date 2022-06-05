@@ -1,7 +1,8 @@
 let mapInitialized = false, routeInitialized = false;
 let userLoc;
-let lastDir, route;
-let debug = false;
+let lastDir, lastStep, route;
+let debug = true;
+let lastPromptTime = -60000;
 
 $('#start').click(initSpeech);
 
@@ -102,11 +103,14 @@ async function getRoute(end) {
 
 function checkRoute() {
   let step = getCurrentStep();
+  if (step.routeStep !== lastStep) {
+    lastStep = step.routeStep;
+    prompt();
+  }
   let dir = getCurrentDirection(step);
   if (dir.announcement !== lastDir) {
     lastDir = dir.announcement;
-    let utter = new SpeechSynthesisUtterance(lastDir);
-    window.speechSynthesis.speak(utter);
+    speak(lastDir, true);
     console.log(lastDir);
   }
 }
@@ -180,8 +184,7 @@ function deg2rad(deg) {
 
 function initSpeech() {
   $('.overlay').hide();
-  let utter = new SpeechSynthesisUtterance('Hi there. Once your location has been determined, touch anywhere on the map to begin navigating.');
-  window.speechSynthesis.speak(utter);
+  speak('Hi there. Once your location has been determined, touch anywhere on the map to begin navigating.', true);
 }
 
 function writeInstructions() {
@@ -196,4 +199,44 @@ function writeInstructions() {
   instructions.innerHTML = `<p><strong>Trip duration: ${Math.floor(
     route.duration / 60
   )} min 🚴 </strong></p><ol>${tripInstructions}</ol>`;
+}
+
+function speak(phrase, display) {
+  let utter = new SpeechSynthesisUtterance(phrase);
+  window.speechSynthesis.speak(utter);
+  if (display) $('#instructions').html(phrase);
+}
+
+let prompts = [
+  {phrase: 'Remember when you got lost.'},
+  {phrase: 'Remember when you were late.'},
+  {phrase: 'Remember a time you were driven by someone else.'},
+  {phrase: 'Remember learning to drive.'},
+  {phrase: 'Remember when you were going too fast.'},
+  {phrase: 'Remember when you regretted getting in a car'},
+  {phrase: 'Remember when you got closer to someone in a car'},
+  {phrase: 'Remember when you felt distant from someone while driving'},
+  {phrase: 'Remember when you were feeling tired'},
+  {phrase: 'Remember when you couldn\'t wait to get there'},
+  {phrase: 'Where is the person in the next car going?'},
+  {phrase: 'Where is the person in the next car coming from?'},
+  {phrase: 'Turn on some music'},
+  {phrase: 'Open the windows'},
+  {phrase: 'Turn up the AC'},
+  {phrase: 'Stop for something to eat'},
+  {phrase: 'Pull over soon to stretch your legs'}
+];
+
+function prompt() {
+  let availPrompts = prompts.filter((elt) => { return !(elt.played)});
+  if (availPrompts.length && performance.now() - lastPromptTime > 60*1000) {
+    let p = pickRandom(availPrompts);
+    p.played = true;
+    setTimeout(() => { speak(p.phrase); }, 10*1000);
+    lastPromptTime = performance.now() + 10*1000;
+  }
+}
+
+function pickRandom(arr) {
+  return arr[Math.floor(Math.random() * arr.length)];
 }
