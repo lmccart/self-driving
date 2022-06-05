@@ -212,11 +212,11 @@ let prompts = [
   {phrase: 'Remember when you were late.'},
   {phrase: 'Remember a time you were driven by someone else.'},
   {phrase: 'Remember learning to drive.'},
-  {phrase: 'Remember when you were going too fast.'},
+  {phrase: 'Remember when you were driving and going too fast.'},
   {phrase: 'Remember when you regretted getting in a car'},
   {phrase: 'Remember when you got closer to someone in a car'},
   {phrase: 'Remember when you felt distant from someone while driving'},
-  {phrase: 'Remember when you were feeling tired'},
+  {phrase: 'Remember when you were driving and feeling tired'},
   {phrase: 'Remember when you couldn\'t wait to get there'},
   {phrase: 'Where is the person in the next car going?'},
   {phrase: 'Where is the person in the next car coming from?'},
@@ -232,6 +232,9 @@ function prompt() {
   if (availPrompts.length && performance.now() - lastPromptTime > 60*1000) {
     let p = pickRandom(availPrompts);
     p.played = true;
+    if (availPrompts.length < 13) {
+      p.phrase = p.phrase.replace('driving and ', ' ');
+    }
     setTimeout(() => { speak(p.phrase); }, 10*1000);
     lastPromptTime = performance.now() + 10*1000;
   }
